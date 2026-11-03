@@ -1,0 +1,40 @@
+name: Main source policy
+
+# Read the policy from the trusted target branch. Never check out or execute PR code.
+on:
+  pull_request_target:
+    branches: [main]
+    types: [opened, synchronize, reopened, edited, ready_for_review]
+
+permissions: {}
+
+jobs:
+  main-source-policy:
+    name: main-source-policy
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Require develop from this repository
+        shell: python
+        run: |
+          import json
+          import os
+          import sys
+
+          with open(os.environ["GITHUB_EVENT_PATH"], encoding="utf-8") as stream:
+              event = json.load(stream)
+          pr = event["pull_request"]
+          head = pr.get("head") or {}
+          source_repo = head.get("repo") or {}
+          base = pr.get("base") or {}
+          target_repo = base.get("repo") or {}
+          allowed = (
+              base.get("ref") == "main"
+              and head.get("ref") == "develop"
+              and source_repo.get("id") is not None
+              and source_repo.get("id") == target_repo.get("id")
+          )
+          if not allowed:
+              print("::error::Only develop in this repository may merge into main. Merge other branches into develop first.")
+              sys.exit(1)
+          print("Allowed: develop from this repository into main.")
