@@ -46,10 +46,10 @@
 | T06 | WPF 操作與累計統計整合 | T04、T05 | AI；操作由使用者補驗 | 待驗證 |
 | T07 | 實際 UDP 收送與生命週期測試 | T04、T05 | AI | 完成（Linux） |
 | T08 | Windows x64 單檔發布 | T06、T07 | AI | 待驗證 |
-| T09 | GitHub Windows 建置／測試 CI | T08 | AI；權限問題由使用者協助 | 受阻 |
+| T09 | GitHub Windows 建置／測試 CI | T08 | AI；權限問題由使用者協助 | 完成（使用者確認原 run Success；action 升級待新 run） |
 | T10 | 外部 SNMP 工具互通 | T07、T08 | AI 可先自動化，否則使用者補驗 | 完成（loopback） |
-| T11 | Windows GUI、最低 OS 與無 runtime 驗收 | T08 | 使用者實機／VM；AI 提供步驟 | 受阻 |
-| T12 | 跨主機內網 SNMP 驗收 | T08、T10 | 使用者；AI 提供步驟 | 受阻 |
+| T11 | Windows GUI、最低 OS 與無 runtime 驗收 | T08 | 使用者實機／VM；AI 提供步驟 | 待驗證（已回報通過，OS 資料待補） |
+| T12 | 跨主機內網 SNMP 驗收 | T08、T10 | 使用者；AI 提供步驟 | 待驗證（已回報通過，版本組合待補） |
 | T13 | 驗收彙整、文件與版本資訊 | T09、T10、T11、T12 | AI 彙整，使用者確認 | 待驗證 |
 | T14 | PR 合併與 v0.1.0 交付 | T13 | 明確授權後由 AI／使用者執行 | 受阻 |
 
@@ -228,7 +228,7 @@ T05 可在 T02 完成後獨立進行，不必等待所有協定補強結束；�
 - Windows：交叉 Release 發布成功；版本 0.1.0、runtime 10.0.14，內建範例與授權全文。這不代表實機通過。
 - 授權：套件主授權及 upstream 聲明已盤點／保留；完整原生元件歸屬核對待完成，見 THIRD-PARTY-NOTICES.md。
 - T06／T08／T11／T12：GUI、最低 OS、乾淨無 runtime 及跨主機測試需使用者執行 docs/acceptance.md。
-- T09：workflow 已建立；GitHub API 回覆 Forbidden，尚無可讀取的 CI run 證據。推送後使用者可在 Actions 查看結果。
+- T09：使用者提供 run 41760480915／artifact 13289684606，確認最終 Success；commit 與 EXE SHA-256 及獨立工具比對已記錄於 verification.md。Node.js 20 棄用警告另以 action 升級處理，升級後 run 仍待核實。
 - T13：已集中版本、更新文件與未發布紀錄；最終驗收與授權證據未齊，不標記完成。
 - T14：實作分支提交／推送後，仍需通過上述驗收及可用 GitHub 權限才能 PR 合併；尚無 tag／Release，不繞過 main 規則。
 
