@@ -9,12 +9,12 @@
 | 獨立協定互通 | PySNMP 7.1.22／pyasn1 0.6.5；`python scripts/interop.py` | 24 項通過，exit 0；v1／v2c GET、walk、SET 拒絕、v2c bulk、錯誤 community timeout |
 | Windows 發布 | `dotnet publish src/SnmpSimulator.App -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o artifacts/final-candidate` | 交叉建置成功；runtime 固定 10.0.14，版本 0.1.0 |
 | Windows CI | 使用者提供 run 41760480915、artifact 13289684606，見下節 | 使用者確認該 run 最終狀態為 Success，並提供產物／雜湊證據；有 Node.js 20 action runtime 棄用警告，非測試失敗。Agent 未獨立讀取 API 狀態 |
-| Windows GUI／最低 OS／無 runtime | 使用者人工回報，見下節 | 回報單檔、內建範例、GUI、啟停、關閉、重載及乾淨環境通過；實際 OS／build 待補，不能推論 10／11 均已驗證 |
-| 跨主機內網 | 使用者人工回報，見下節 | 回報 GET／walk／bulkwalk 通過；各 SNMP 版本的操作組合待補 |
+| Windows GUI／最低 OS／無 runtime | 使用者人工回報，見下節 | 使用者最終整體確認除效能外皆通過，人工功能驗收完成；實際 OS／build 明細未提供，見最終確認範圍 |
+| 跨主機內網 | 使用者人工回報，見下節 | 使用者最終整體確認通過，含需求中的 v1／v2c 操作組合；截圖未逐項涵蓋，依人工確認記錄 |
 | 授權 | THIRD-PARTY-NOTICES.md、licenses/ | 主授權與完整 upstream notices 已保留；原生元件逐項對照未完成 |
 | 效能 | p99／500 ms | 未測，非本版完成門檻 |
 
-本次沒有建立 tag／Release，也未合併至 main。需要人工結果及 CI／最終授權核對後才能宣告版本驗收完成。
+尚未建立 tag／Release 或合併至 main。人工功能驗收已獲使用者整體確認；後續仍需處理交付、最終授權對照及新版 CI 的執行紀錄。
 
 ## 本地候選產物（歷史建置，非本次人工驗收的 CI 產物）
 
@@ -58,12 +58,20 @@ Artifact 名稱與 SOURCE_COMMIT.txt 的 commit 一致；實際下載 EXE 的計
 - 使用者確認以全新安裝的 VM 執行，乾淨環境驗收依此記錄；實際 Windows 版本／build／x64 仍待補，未推論 Windows 10 與 11 均已測試。
 - 使用者回報多次停止／啟用及換檔測試；可記錄啟停與換檔操作通過。執行中修改同一 JSON 不生效、停止再啟動才套用的情境尚待明確確認。
 - 使用者確認 Actions run 41760480915 最終為 Success。警告針對 action 自身使用的 Node.js 20，不是 SNMP 程式或 Python 的 runtime；已核對官方 action.yml，改用 checkout v5、setup-dotnet v5、setup-python v6、upload-artifact v6（均為 node24）；更新後需以新的 run 結果確認警告消除，不改寫本次已成功結果。
-- 使用者提到 SNMP 測試截圖，但該則訊息未收到附件；尚無額外圖片可判讀操作／版本組合。
+- 使用者後續補上 iReasoning MIB Browser 結果截圖：目標為私網 IPv4，操作欄為 Get；表格包含七個範例 OID，顯示設備描述、sysObjectID、uptime、聯絡人、名稱、位置及介面數，內容與型別符合範例。sysUpTime 顯示 46 seconds (4692)，對應 TimeTicks。
+- 使用者確認多筆相同 sysDescr OID／值來自短時間內反覆發送 GET，目的是觀察是否遺漏封包；實際觀察請求皆立即收到回應，未發現遺漏。記為人工突發收送功能檢查通過，不是單次 walk 重複回覆的問題。未記錄請求總數、送出速率、測試時長或延遲分布，因此不據此推導量化吞吐量、丟包率或 p99。
+- 截圖未顯示 Advanced 裡的 SNMP 版本，亦未顯示 walk／bulkwalk 操作設定或結束結果，因此用作 GET／範例資料的補充證據，不自動標記所有版本／操作組合完成。是否跨主機仍依使用者回報，不從私網目標位址單獨推斷。
 
-### 尚待補充的追溯資料
+### 先前待補項目與最終確認
 
 - 實際 Windows 版本、build、x64；已知使用全新安裝 VM，確認是否於安裝其他 runtime／工具前執行單檔測試。
-- 分別執行的 v1 GET／walk 與 v2c GET／walk／bulkwalk 組合。
-- 重載是否包含執行中修改不生效、停止後重新開始才套用。
+- v1 GET／walk 與 v2c GET／walk／bulkwalk 組合：已依使用者最終整體確認記錄通過，未另外取得逐項操作截圖。
+- 執行中修改不生效、停止後重新開始才套用：已依使用者最終整體確認記錄通過。
 
 授權視窗可讀取代表檢視功能通過，不等同第三方授權內容完整性已核對。
+
+## 使用者最終功能驗收確認（2026-11-04）
+
+使用者明確表示「除了 p99／500 ms 之外，全部都通過」。據此，v0.1.0 其餘人工功能驗收項目記為通過，包括前述詢問的 SNMP 版本／操作組合與重載行為。此結論來自使用者的整體驗收確認，不偽造未提供的 OS build、逐項截圖或 Agent 獨立測試結果。既有 VM、工具、CI 產物 commit／hash 與成功 run 證據均保留。
+
+p99／500 ms 為本版本範圍外的效能目標，狀態為未量測，不記為失敗，也不阻擋 v0.1.0 功能驗收。原生元件授權對照、PR／合併與正式發布屬另行的工程交付工作，不能從功能驗收推導為已完成。
