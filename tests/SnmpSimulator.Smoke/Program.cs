@@ -7,6 +7,12 @@ using SnmpSimulator.Core;
 var path = args.Length > 0 ? args[0] : "samples/device.json";
 var profile = DeviceProfile.Load(path);
 var agent = new SnmpAgent(profile);
+if (args.Length > 1 && args[1] == "--serve")
+{
+    var port = args.Length > 2 ? int.Parse(args[2]) : 1161;
+    await agent.RunAsync(new IPEndPoint(IPAddress.Loopback, port), CancellationToken.None, () => Console.WriteLine("READY"));
+    return;
+}
 var checks = 0;
 void Check(bool condition, string name)
 {
@@ -87,4 +93,82 @@ for (var iteration = 0; iteration < 2; iteration++)
     Check(new AsnReader(ticks, AsnEncodingRules.BER).ReadInteger(new Asn1Tag(TagClass.Application, 3)) > 0, $"uptime increases, startup {iteration + 1}");
     stop.Cancel(); await run;
 }
+// Configuration and immutable snapshot boundaries.
+var json = File.ReadAllText(path);
+void Invalid(string input, string name)
+{
+    try { DeviceProfile.Parse(input); throw new Exception("Accepted invalid configuration: " + name); }
+    catch (InvalidDataException) { Check(true, name); }
+}
+Invalid("null", "null configuration"); Invalid("{", "malformed JSON");
+Invalid(json.Replace("\"schemaVersion\": 1", "\"schemaVersion\": 2"), "unsupported schema");
+Invalid(json.Replace("\"value\": 2", "\"value\": 2147483648"), "integer overflow");
+Invalid(json.Replace("\"type\": \"Integer32\"", "\"type\": \"Unknown\""), "unknown type");
+Invalid(json.Replace("1.3.6.1.2.1.1.2.0", "1.3.6.1.2.1.1.1.0"), "duplicate OID");
+Invalid("{\"schemaVersion\":1,\"name\":\"x\",\"community\":\"x\",\"objects\":[null]}", "null object");
+Invalid(new string(' ', DeviceProfile.MaxFileBytes + 1), "bounded configuration length");
+using (var cancelled = new CancellationTokenSource())
+{
+    cancelled.Cancel();
+    try { await DeviceProfile.LoadAsync(path, cancelled.Token); throw new Exception("Cancellation ignored"); }
+    catch (OperationCanceledException) { Check(true, "configuration cancellation"); }
+}
+var bigFile = Path.GetTempFileName();
+try
+{
+    using (var file = File.OpenWrite(bigFile)) file.SetLength(DeviceProfile.MaxFileBytes + 1L);
+    try { await DeviceProfile.LoadAsync(bigFile); throw new Exception("Oversized file accepted"); }
+    catch (InvalidDataException) { Check(true, "file size bounded before read"); }
+}
+finally { File.Delete(bigFile); }
+var copied = DeviceProfile.Load(path); var snapshot = new SnmpAgent(copied); copied.Objects.Clear();
+Check(Parse(snapshot.Respond(Request(1, 0, [nameOid]))!).Error == 0, "snapshot survives source mutation");
+var ordered = DeviceProfile.Parse("{\"schemaVersion\":1,\"name\":\"x\",\"community\":\"public\",\"objects\":[{\"oid\":\"1.3.6.10.0\",\"type\":\"Counter32\",\"value\":4294967295},{\"oid\":\"1.3.6.2.0\",\"type\":\"Gauge32\",\"value\":0}]}");
+Check(Parse(new SnmpAgent(ordered).Respond(Request(1, 1, ["1.3.6"]))!).Values[0].Oid == "1.3.6.2.0", "numeric OID ordering");
+foreach (var v in new[] { 0, 1 })
+    foreach (var o in profile.Objects)
+        Check(Parse(agent.Respond(Request(v, 0, [o.Oid]))!).Values.Count == 1, $"configured OID v{v}: {o.Oid}");
+Check(Parse(agent.Respond(Request(1, 5, [nameOid], first: 99, second: 0))!).Values.Count == 1, "bulk non-repeaters clamped");
+Check(Parse(agent.Respond(Request(1, 5, [nameOid], first: -1, second: -1))!).Values.Count == 0, "bulk negative values normalized");
+Check(Parse(agent.Respond(Request(1, 5, [nameOid, nameOid], second: 2))!).Values.Count == 4, "bulk multiple repeaters");
+Check(agent.Respond(Request(0, 0, Enumerable.Repeat(nameOid, 200).ToArray())) is null, "v1 oversized tooBig safely dropped");
+Check(agent.Respond(Request(1, 0, Enumerable.Repeat(nameOid, 257).ToArray())) is null, "request binding limit");
+Check(agent.Respond(Request(1, 0, [nameOid]).Concat(new byte[] { 0 }).ToArray()) is null, "trailing BER rejected");
+var clock = new ManualTime(); var timed = new SnmpAgent(profile, clock);
+uint ReadTicks() => (uint)new AsnReader(Parse(timed.Respond(Request(1, 0, ["1.3.6.1.2.1.1.3.0"]))!).Values[0].Value, AsnEncodingRules.BER).ReadInteger(new Asn1Tag(TagClass.Application, 3));
+clock.Now = 1230; Check(ReadTicks() == 123, "deterministic uptime");
+clock.Now = ((long)uint.MaxValue + 2) * 10; Check(ReadTicks() == 1, "uptime wraps UInt32");
+await using var session = new SimulatorSession();
+var starting = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+var pending = session.StartAsync(async token => { starting.SetResult(); await Task.Delay(Timeout.Infinite, token); return profile; }, endpoint);
+await starting.Task.WaitAsync(timeout.Token);
+await session.StopAsync(); await pending;
+Check(session.State == SessionState.Stopped && session.Error is null, "session startup cancellation");
+using (var occupied = new UdpClient(endpoint))
+{
+    await session.StartAsync(_ => Task.FromResult(profile), endpoint);
+    Check(session.State == SessionState.Stopped && session.Error is not null, "session bind failure cleanup");
+}
+var readyAgain = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+session.Changed += state => { if (state == SessionState.Running) readyAgain.TrySetResult(); };
+var runAgain = session.StartAsync(_ => Task.FromResult(profile), endpoint);
+await readyAgain.Task.WaitAsync(timeout.Token);
+try { _ = session.StartAsync(_ => Task.FromResult(profile), endpoint); throw new Exception("Duplicate start accepted"); }
+catch (InvalidOperationException) { Check(true, "duplicate session start rejected"); }
+await session.StopAsync(); await runAgain;
+Check(session.Error is null, "session restart after bind failure");
+var random = new Random(12345);
+for (var i = 0; i < 1000; i++)
+{
+    var garbage = new byte[random.Next(1, 256)]; random.NextBytes(garbage);
+    _ = agent.Respond(garbage);
+}
+Check(true, "1000 malformed packet samples cannot crash decoder");
 Console.WriteLine($"Completed {checks} checks.");
+
+sealed class ManualTime : TimeProvider
+{
+    public long Now;
+    public override long TimestampFrequency => 1000;
+    public override long GetTimestamp() => Now;
+}

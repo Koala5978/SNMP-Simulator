@@ -5,28 +5,57 @@ namespace SnmpSimulator.Core;
 
 public sealed record DeviceProfile(int SchemaVersion, string Name, string Community, List<OidObject> Objects)
 {
-    public static DeviceProfile Load(string path) => Parse(File.ReadAllText(path));
+    public const int MaxFileBytes = 16 * 1024 * 1024;
+    public static DeviceProfile Load(string path) => LoadAsync(path).GetAwaiter().GetResult();
+    public static async Task<DeviceProfile> LoadAsync(string path, CancellationToken cancellationToken = default)
+    {
+        await using var file = File.OpenRead(path);
+        if (file.Length > MaxFileBytes) throw new InvalidDataException("設定檔超過 16 MiB。");
+        using var data = new MemoryStream();
+        var buffer = new byte[8192];
+        int count;
+        while ((count = await file.ReadAsync(buffer, cancellationToken)) != 0)
+        {
+            if (data.Length + count > MaxFileBytes) throw new InvalidDataException("設定檔超過 16 MiB。");
+            await data.WriteAsync(buffer.AsMemory(0, count), cancellationToken);
+        }
+        cancellationToken.ThrowIfCancellationRequested();
+        return Parse(System.Text.Encoding.UTF8.GetString(data.ToArray()).TrimStart('\uFEFF'));
+    }
 
     public static DeviceProfile Parse(string json)
     {
-        var profile = JsonSerializer.Deserialize<DeviceProfile>(json,
-            new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
-            ?? throw new InvalidDataException("設定檔不可為空。");
-        if (profile.SchemaVersion != 1 || string.IsNullOrWhiteSpace(profile.Name) ||
-            string.IsNullOrEmpty(profile.Community) || profile.Objects is not { Count: > 0 })
-            throw new InvalidDataException("需要 schemaVersion=1、name、community 及至少一個 OID。");
-        if (profile.Objects.Count > 100_000) throw new InvalidDataException("OID 數量超出第一版限制。");
-        var seen = new HashSet<string>();
-        foreach (var item in profile.Objects)
+        if (System.Text.Encoding.UTF8.GetByteCount(json) > MaxFileBytes) throw new InvalidDataException("設定檔超過 16 MiB。");
+        try
         {
-            if (string.IsNullOrEmpty(item.Oid)) throw new InvalidDataException("OID 不可為空。");
-            var canonical = string.Join('.', item.Oid.Split('.').Select(s => uint.Parse(s, System.Globalization.CultureInfo.InvariantCulture)));
-            if (canonical != item.Oid || !seen.Add(canonical)) throw new InvalidDataException($"重複或非標準 OID：{item.Oid}");
-            var writer = new AsnWriter(AsnEncodingRules.BER);
-            writer.WriteObjectIdentifier(item.Oid);
-            item.Encode(TimeSpan.Zero); // Validate type and value before starting the listener.
+            var profile = JsonSerializer.Deserialize<DeviceProfile>(json,
+                new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
+                ?? throw new InvalidDataException("設定檔不可為空。");
+            if (profile.SchemaVersion != 1 || string.IsNullOrWhiteSpace(profile.Name) ||
+                string.IsNullOrEmpty(profile.Community) || profile.Objects is not { Count: > 0 })
+                throw new InvalidDataException("需要 schemaVersion=1、name、community 及至少一個 OID。");
+            if (profile.Objects.Count > 100_000) throw new InvalidDataException("OID 數量超出第一版限制。");
+            var seen = new HashSet<string>();
+            for (var index = 0; index < profile.Objects.Count; index++)
+            {
+                var item = profile.Objects[index];
+                try
+                {
+                    if (item is null) throw new InvalidDataException("物件不可為 null。");
+                    if (string.IsNullOrEmpty(item.Oid)) throw new InvalidDataException("OID 不可為空。");
+                    if (item.Oid.Split('.').Length is < 2 or > 128) throw new InvalidDataException("OID 必須有 2～128 段。");
+                    var canonical = string.Join('.', item.Oid.Split('.').Select(s => uint.Parse(s, System.Globalization.CultureInfo.InvariantCulture)));
+                    if (canonical != item.Oid || !seen.Add(canonical)) throw new InvalidDataException($"重複或非標準 OID：{item.Oid}");
+                    var writer = new AsnWriter(AsnEncodingRules.BER);
+                    writer.WriteObjectIdentifier(item.Oid);
+                    item.Encode(TimeSpan.Zero);
+                }
+                catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or FormatException or OverflowException or InvalidDataException)
+                { throw new InvalidDataException($"objects[{index}]：{ex.Message}", ex); }
+            }
+            return profile;
         }
-        return profile;
+        catch (JsonException ex) { throw new InvalidDataException($"JSON {ex.Path}：{ex.Message}", ex); }
     }
 }
 
