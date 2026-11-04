@@ -14,7 +14,7 @@
 | 授權 | THIRD-PARTY-NOTICES.md、licenses/ | 主授權與完整 upstream notices 已保留；原生元件逐項對照未完成 |
 | 效能 | p99／500 ms | 未測，非本版完成門檻 |
 
-尚未建立 tag／Release 或合併至 main。人工功能驗收已獲使用者整體確認；後續仍需處理交付、最終授權對照及新版 CI 的執行紀錄。
+尚未建立 tag／Release 或合併至 main。人工功能驗收已獲使用者整體確認；後續仍需處理交付與最終授權對照；新版 CI 的成功及警告消除已由使用者確認。
 
 ## 本地候選產物（歷史建置，非本次人工驗收的 CI 產物）
 
@@ -57,7 +57,7 @@ Artifact 名稱與 SOURCE_COMMIT.txt 的 commit 一致；實際下載 EXE 的計
 
 - 使用者確認以全新安裝的 VM 執行，乾淨環境驗收依此記錄；實際 Windows 版本／build／x64 仍待補，未推論 Windows 10 與 11 均已測試。
 - 使用者回報多次停止／啟用及換檔測試；可記錄啟停與換檔操作通過。執行中修改同一 JSON 不生效、停止再啟動才套用的情境尚待明確確認。
-- 使用者確認 Actions run 41760480915 最終為 Success。警告針對 action 自身使用的 Node.js 20，不是 SNMP 程式或 Python 的 runtime；已核對官方 action.yml，改用 checkout v5、setup-dotnet v5、setup-python v6、upload-artifact v6（均為 node24）；更新後需以新的 run 結果確認警告消除，不改寫本次已成功結果。
+- 使用者確認 Actions run 41760480915 最終為 Success。警告針對 action 自身使用的 Node.js 20，不是 SNMP 程式或 Python 的 runtime；已核對官方 action.yml，改用 checkout v5、setup-dotnet v5、setup-python v6、upload-artifact v6（均為 node24）；更新後的成功及警告消除已有下節使用者截圖／回報證據；舊 run 的警告保留為歷史紀錄。
 - 使用者後續補上 iReasoning MIB Browser 結果截圖：目標為私網 IPv4，操作欄為 Get；表格包含七個範例 OID，顯示設備描述、sysObjectID、uptime、聯絡人、名稱、位置及介面數，內容與型別符合範例。sysUpTime 顯示 46 seconds (4692)，對應 TimeTicks。
 - 使用者確認多筆相同 sysDescr OID／值來自短時間內反覆發送 GET，目的是觀察是否遺漏封包；實際觀察請求皆立即收到回應，未發現遺漏。記為人工突發收送功能檢查通過，不是單次 walk 重複回覆的問題。未記錄請求總數、送出速率、測試時長或延遲分布，因此不據此推導量化吞吐量、丟包率或 p99。
 - 截圖未顯示 Advanced 裡的 SNMP 版本，亦未顯示 walk／bulkwalk 操作設定或結束結果，因此用作 GET／範例資料的補充證據，不自動標記所有版本／操作組合完成。是否跨主機仍依使用者回報，不從私網目標位址單獨推斷。
@@ -75,3 +75,11 @@ Artifact 名稱與 SOURCE_COMMIT.txt 的 commit 一致；實際下載 EXE 的計
 使用者明確表示「除了 p99／500 ms 之外，全部都通過」。據此，v0.1.0 其餘人工功能驗收項目記為通過，包括前述詢問的 SNMP 版本／操作組合與重載行為。此結論來自使用者的整體驗收確認，不偽造未提供的 OS build、逐項截圖或 Agent 獨立測試結果。既有 VM、工具、CI 產物 commit／hash 與成功 run 證據均保留。
 
 p99／500 ms 為本版本範圍外的效能目標，狀態為未量測，不記為失敗，也不阻擋 v0.1.0 功能驗收。原生元件授權對照、PR／合併與正式發布屬另行的工程交付工作，不能從功能驗收推導為已完成。
+
+## Node.js 24 action 升級後驗證（2026-11-04）
+
+- 使用者確認修改後的 Actions 沒有警告訊息。
+- 提供的 windows-build.yml 執行截圖顯示 windows job 綠色成功，耗時 56 秒；這是 CI job 時間，不是 SNMP 延遲或效能數據。
+- 截圖的 artifact 名稱為 `snmp-simulator-win-x64-fd6ce3017d30dade50d31ac82566b1f4f32609ec`，大小 57.8 MB；來源 SHA 與該次提交一致。
+- 截圖的 Digest 屬 artifact 摘要，不取代內部 EXE 的 SHA256SUMS.txt。本次未提供新版 EXE hash，不沿用舊產物 hash。
+- 本項記錄基於使用者截圖與無警告確認；未提供新 run URL，不補造 run ID。T09 action runtime 升級驗證通過。

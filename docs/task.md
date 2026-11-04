@@ -46,7 +46,7 @@
 | T06 | WPF 操作與累計統計整合 | T04、T05 | AI；操作由使用者補驗 | 完成（使用者整體驗收確認） |
 | T07 | 實際 UDP 收送與生命週期測試 | T04、T05 | AI | 完成（Linux） |
 | T08 | Windows x64 單檔發布 | T06、T07 | AI | 待驗證 |
-| T09 | GitHub Windows 建置／測試 CI | T08 | AI；權限問題由使用者協助 | 完成（使用者確認原 run Success；action 升級待新 run） |
+| T09 | GitHub Windows 建置／測試 CI | T08 | AI；權限問題由使用者協助 | 完成（CI 成功，Node.js 24 升級後無警告） |
 | T10 | 外部 SNMP 工具互通 | T07、T08 | AI 可先自動化，否則使用者補驗 | 完成（loopback） |
 | T11 | Windows GUI、最低 OS 與無 runtime 驗收 | T08 | 使用者實機／VM；AI 提供步驟 | 完成（使用者整體驗收確認） |
 | T12 | 跨主機內網 SNMP 驗收 | T08、T10 | 使用者；AI 提供步驟 | 完成（使用者整體驗收確認） |
@@ -228,7 +228,7 @@ T05 可在 T02 完成後獨立進行，不必等待所有協定補強結束；�
 - Windows：交叉 Release 發布成功；版本 0.1.0、runtime 10.0.14，內建範例與授權全文。這不代表實機通過。
 - 授權：套件主授權及 upstream 聲明已盤點／保留；完整原生元件歸屬核對待完成，見 THIRD-PARTY-NOTICES.md。
 - T06／T11／T12：使用者已整體確認除 p99／500 ms 外全部驗收通過；CI 產物及工具證據見 verification.md。T08 的打包與人工執行已通過，最終授權核對仍列於 T13。
-- T09：使用者提供 run 41760480915／artifact 13289684606，確認最終 Success；commit 與 EXE SHA-256 及獨立工具比對已記錄於 verification.md。Node.js 20 棄用警告另以 action 升級處理，升級後 run 仍待核實。
+- T09：使用者提供 run 41760480915／artifact 13289684606，確認最終 Success；commit 與 EXE SHA-256 及獨立工具比對已記錄於 verification.md。Node.js 20 棄用警告另以 action 升級處理，使用者已提供 fd6ce3017d30dade50d31ac82566b1f4f32609ec 產物與 Windows job 成功截圖，確認升級後無警告。
 - T13：已集中版本、文件與未發布紀錄；功能驗收已獲使用者確認，最終授權對照仍未完成，因此任務保留待驗證。
 - T14：實作分支提交／推送後，仍需通過上述驗收及可用 GitHub 權限才能 PR 合併；尚無 tag／Release，不繞過 main 規則。
 
