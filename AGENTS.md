@@ -41,4 +41,4 @@ dotnet build src/SnmpSimulator.App -c Release
 dotnet publish src/SnmpSimulator.App -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o artifacts/win-x64
 ```
 
-上述專案目前可能仍為未提交原型；使用前確認檔案存在。WPF 只在 Windows 執行，本機 UDP 檢查不能代替跨主機內網或效能驗收。
+程式與測試已納入實作分支；核心結果與外部限制見 docs/verification.md。WPF 只在 Windows 執行，本機 UDP 檢查不能代替跨主機內網或效能驗收。
