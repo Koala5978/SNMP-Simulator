@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "name": "Demo Switch",
+  "community": "public",
+  "objects": [
+    { "oid": "1.3.6.1.2.1.1.1.0", "type": "OctetString", "value": "SNMP Simulator - Demo Switch" },
+    { "oid": "1.3.6.1.2.1.1.2.0", "type": "ObjectIdentifier", "value": "1.3.6.1.4.1.32473.1" },
+    { "oid": "1.3.6.1.2.1.1.3.0", "type": "Uptime" },
+    { "oid": "1.3.6.1.2.1.1.4.0", "type": "OctetString", "value": "Demo Administrator" },
+    { "oid": "1.3.6.1.2.1.1.5.0", "type": "OctetString", "value": "demo-switch-01" },
+    { "oid": "1.3.6.1.2.1.1.6.0", "type": "OctetString", "value": "Test Lab" },
+    { "oid": "1.3.6.1.2.1.2.1.0", "type": "Integer32", "value": 2 }
+  ]
+}

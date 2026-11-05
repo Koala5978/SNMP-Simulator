@@ -1,0 +1,49 @@
+name: Windows build and smoke
+on:
+  push:
+    branches: [develop, 'feature/**']
+  pull_request:
+    branches: [develop, main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  windows:
+    runs-on: windows-2022
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '10.0.x'
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Core and real UDP tests
+        shell: pwsh
+        run: |
+          dotnet run -c Release --project tests/SnmpSimulator.Smoke -- samples/device.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Independent SNMP interoperability
+        shell: pwsh
+        run: |
+          python -m pip install -r scripts/interop-requirements.txt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python scripts/interop.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Publish portable Windows application
+        shell: pwsh
+        run: |
+          dotnet publish src/SnmpSimulator.App -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o artifacts/windows
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Copy-Item LICENSE,THIRD-PARTY-NOTICES.md artifacts/windows
+          Copy-Item licenses artifacts/windows -Recurse
+          Copy-Item samples/device.json artifacts/windows
+          $hash = Get-FileHash artifacts/windows/snmp-simulator.exe -Algorithm SHA256
+          "$($hash.Hash)  snmp-simulator.exe" | Set-Content artifacts/windows/SHA256SUMS.txt
+          git rev-parse HEAD | Set-Content artifacts/windows/SOURCE_COMMIT.txt
+      - uses: actions/upload-artifact@v6
+        with:
+          name: snmp-simulator-win-x64-${{ github.sha }}
+          path: artifacts/windows/
+          if-no-files-found: error
