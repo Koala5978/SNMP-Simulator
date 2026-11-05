@@ -69,3 +69,7 @@ snmpbulkwalk -v2c -c public -On 127.0.0.1:161 1.3.6.1.2.1
 預期設備名稱為 `demo-switch-01`，uptime 持續增加，walk 可取得七個範例 OID。這些外部工具命令是 Windows 驗收步驟，並非已執行的檢查。
 
 獨立用戶端互通：先以 Release 執行 smoke，再於 Python 虛擬環境執行 `pip install -r scripts/interop-requirements.txt` 與 `python scripts/interop.py`。PySNMP／pyasn1 只供測試，不打包進 EXE。
+
+## Release 附件
+
+建立 tag／Release 不會自動提供執行檔；發布與補傳方式見 [Release 說明](docs/releasing.md)。`Publish Release assets` 工作流程從確切 tag 建置並附加 EXE、ZIP、授權與 SHA-256。
