@@ -1,0 +1,100 @@
+name: Publish Release assets
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing release tag to build and attach assets to (for example v0.1.0)'
+        required: true
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: release-assets-${{ github.event.release.tag_name || inputs.tag }}
+  cancel-in-progress: false
+jobs:
+  release-assets:
+    runs-on: windows-2022
+    timeout-minutes: 25
+    permissions:
+      contents: write
+    env:
+      RELEASE_TAG: ${{ github.event.release.tag_name || inputs.tag }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - name: Validate release tag
+        shell: pwsh
+        run: |
+          if ($env:RELEASE_TAG -notmatch '^v[0-9]+\.[0-9]+\.[0-9]+$') {
+            throw 'Expected a stable vMAJOR.MINOR.PATCH release tag.'
+          }
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ env.RELEASE_TAG }}
+          fetch-depth: 0
+      - name: Verify tag belongs to main and release exists
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git merge-base --is-ancestor HEAD origin/main
+          if ($LASTEXITCODE -ne 0) { throw 'Release source must already be merged into main.' }
+          gh release view $env:RELEASE_TAG --repo $env:GH_REPO
+          if ($LASTEXITCODE -ne 0) { throw 'Create the GitHub Release first.' }
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '10.0.x'
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Check assembly version and test tagged source
+        shell: pwsh
+        run: |
+          $version = dotnet msbuild src/SnmpSimulator.App -getProperty:Version -nologo
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if ($version.Trim() -ne $env:RELEASE_TAG.Substring(1)) { throw 'Tag and application version do not match.' }
+          dotnet run -c Release --project tests/SnmpSimulator.Smoke -- samples/device.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m pip install -r scripts/interop-requirements.txt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python scripts/interop.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Publish and package tagged source
+        shell: pwsh
+        run: |
+          dotnet publish src/SnmpSimulator.App -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o artifacts/package
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Copy-Item LICENSE,THIRD-PARTY-NOTICES.md artifacts/package
+          Copy-Item licenses artifacts/package -Recurse
+          Copy-Item samples/device.json artifacts/package
+          $source = git rev-parse HEAD
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $source | Set-Content artifacts/package/SOURCE_COMMIT.txt -Encoding utf8
+          $exeHash = Get-FileHash artifacts/package/snmp-simulator.exe -Algorithm SHA256
+          "$($exeHash.Hash)  snmp-simulator.exe" | Set-Content artifacts/package/SHA256SUMS.txt -Encoding utf8
+          New-Item artifacts/release -ItemType Directory -Force | Out-Null
+          $zip = "snmp-simulator-$($env:RELEASE_TAG)-win-x64.zip"
+          Compress-Archive -Path artifacts/package/* -DestinationPath "artifacts/release/$zip"
+          Copy-Item artifacts/package/snmp-simulator.exe,artifacts/package/SOURCE_COMMIT.txt artifacts/release
+          Copy-Item LICENSE,THIRD-PARTY-NOTICES.md artifacts/release
+          $licenseZip = 'licenses.zip'
+          Compress-Archive -Path LICENSE,THIRD-PARTY-NOTICES.md,licenses -DestinationPath "artifacts/release/$licenseZip"
+          Get-ChildItem artifacts/release -File | Sort-Object Name | ForEach-Object {
+            $hash = Get-FileHash $_.FullName -Algorithm SHA256
+            "$($hash.Hash)  $($_.Name)"
+          } | Set-Content artifacts/release/SHA256SUMS.txt -Encoding utf8
+      - name: Attach assets to existing release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $files = @(Get-ChildItem artifacts/release -File | ForEach-Object { $_.FullName })
+          gh release upload $env:RELEASE_TAG @files --repo $env:GH_REPO
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: release-assets-${{ env.RELEASE_TAG }}
+          path: artifacts/release/
+          if-no-files-found: warn
