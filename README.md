@@ -13,7 +13,9 @@
 
 ### 後續版本規劃
 
-- [v0.1.1 修補版 Spec（草稿）](docs/releases/v0.1.1-spec.md)
+- [v0.1.1 修補版 Spec（設計基準）](docs/releases/v0.1.1-spec.md)
+- [v0.1.1 增量架構與流程圖（已確認）](docs/releases/v0.1.1-architecture.md)
+- [v0.1.1 開發與驗收任務（已確認）](docs/releases/v0.1.1-task.md)
 - [v0.2.0 候選事項與後續方向（未開始）](docs/roadmap.md)
 
 ## 授權
