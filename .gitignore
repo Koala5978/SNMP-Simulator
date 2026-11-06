@@ -2,3 +2,6 @@
 **/obj/
 artifacts/
 .vs/
+
+**/__pycache__/
+*.pyc

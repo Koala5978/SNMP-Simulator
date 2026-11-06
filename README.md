@@ -11,6 +11,11 @@
 - [任務規劃（草稿）](docs/task.md)
 - [AI 協作與授權政策](AGENTS.md)
 
+### 後續版本規劃
+
+- [v0.1.1 修補版 Spec（草稿）](docs/releases/v0.1.1-spec.md)
+- [v0.2.0 候選事項與後續方向（未開始）](docs/roadmap.md)
+
 ## 授權
 
 本專案原創程式碼與文件採 [MIT License](LICENSE)。第三方元件保留各自授權；套件政策限用經審查的寬鬆授權，包含遞移相依。發布前仍須核對實際打包的 .NET runtime／原生元件及必要聲明，目前尚未完成整包授權審查。
@@ -73,3 +78,7 @@ snmpbulkwalk -v2c -c public -On 127.0.0.1:161 1.3.6.1.2.1
 ## Release 附件
 
 建立 tag／Release 不會自動提供執行檔；發布與補傳方式見 [Release 說明](docs/releasing.md)。`Publish Release assets` 工作流程從確切 tag 建置並附加 EXE、ZIP、授權與 SHA-256。
+
+## 安全開發流程
+
+SAST、相依漏洞／runtime pack 檢查、協定邊界測試及私人回報／GitHub 設定見 [SECURITY.md](SECURITY.md)。掃描 workflow 已定義不等於平台防護已啟用或第一次掃描已通過。
