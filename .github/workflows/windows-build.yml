@@ -1,7 +1,7 @@
 name: Windows build and smoke
 on:
   push:
-    branches: [develop, 'feature/**']
+    branches: [develop, 'feature/**', 'fix/**']
   pull_request:
     branches: [develop, main]
   workflow_dispatch:
@@ -35,6 +35,8 @@ jobs:
         shell: pwsh
         run: |
           dotnet publish src/SnmpSimulator.App -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o artifacts/windows
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          dotnet run -c Release --project tests/SnmpSimulator.Smoke -- --verify-app src/SnmpSimulator.App/bin/Release/net10.0-windows/win-x64/snmp-simulator.dll artifacts/windows/snmp-simulator.exe
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           Copy-Item LICENSE,THIRD-PARTY-NOTICES.md artifacts/windows
           Copy-Item licenses artifacts/windows -Recurse

@@ -1,6 +1,4 @@
 using System.IO;
-using System.Net;
-using System.Net.Sockets;
 using System.ComponentModel;
 using System.Windows;
 using System.Windows.Threading;
@@ -13,12 +11,12 @@ public partial class MainWindow : Window
 {
     private readonly SimulatorSession session = new();
     private bool closing, allowClose;
-    private string endpointText = "";
     private readonly DispatcherTimer timer = new() { Interval = TimeSpan.FromSeconds(1) };
     public MainWindow()
     {
         InitializeComponent();
-        Title = "SNMP Simulator v0.1.0";
+        var version = typeof(App).Assembly.GetName().Version!;
+        Title = SessionStatusText.WindowTitle(version);
         var defaultPath = Path.Combine(AppContext.BaseDirectory, "device.json");
         ProfilePath.Text = File.Exists(defaultPath) ? defaultPath : "（內建範例）";
         // Poll state/counters instead of queuing a UI callback for each packet.
@@ -28,17 +26,12 @@ public partial class MainWindow : Window
     }
     private void Refresh()
     {
-        var active = session.State is SessionState.Starting or SessionState.Running or SessionState.Stopping;
-        StartButton.IsEnabled = BrowseButton.IsEnabled = ProfilePath.IsEnabled = BindAddress.IsEnabled = Port.IsEnabled = !active && !closing;
-        StopButton.IsEnabled = active && session.State != SessionState.Stopping && !closing;
-        Status.Text = session.State switch
-        {
-            SessionState.Starting => "載入及啟動中…",
-            SessionState.Running => $"模擬中：{session.DeviceName} · {session.OidCount} 個 OID · {endpointText}",
-            SessionState.Stopping => "停止中…",
-            _ => session.Error is null ? "已停止。" : $"無法執行：{session.Error}"
-        };
-        var agent = session.Agent;
+        var snapshot = session.Snapshot;
+        var active = snapshot.IsActive;
+        StartButton.IsEnabled = BrowseButton.IsEnabled = ProfilePath.IsEnabled = BindAddress.IsEnabled = Port.IsEnabled = session.CanStart && !closing;
+        StopButton.IsEnabled = active && snapshot.State != SessionState.Stopping && !closing;
+        Status.Text = SessionStatusText.Format(snapshot);
+        var agent = snapshot.Agent;
         Counters.Text = agent is null ? "" : $"收到：{agent.Received:N0}　送出：{agent.Sent:N0}　丟棄：{agent.Dropped:N0}";
     }
     private void Licenses_Click(object sender, RoutedEventArgs e)
@@ -73,27 +66,20 @@ public partial class MainWindow : Window
     }
     private async void Start_Click(object sender, RoutedEventArgs e)
     {
-        try
+        if (closing || !session.CanStart) return;
+        var source = ProfilePath.Text;
+        var running = session.StartAsync(async token =>
         {
-            if (!IPAddress.TryParse(BindAddress.Text, out var address) || address.AddressFamily != AddressFamily.InterNetwork)
-                throw new InvalidDataException("請輸入本機 IPv4 位址。");
-            if (!int.TryParse(Port.Text, out var port) || port is < 1 or > 65535) throw new InvalidDataException("Port 必須介於 1～65535。");
-            var source = ProfilePath.Text;
-            endpointText = $"{address}:{port}";
-            var running = session.StartAsync(async token =>
-            {
-                if (source != "（內建範例）") return await DeviceProfile.LoadAsync(source, token);
-                using var stream = typeof(App).Assembly.GetManifestResourceStream("DefaultDevice.json")!;
-                using var reader = new StreamReader(stream);
-                var json = await reader.ReadToEndAsync(token);
-                token.ThrowIfCancellationRequested();
-                return DeviceProfile.Parse(json);
-            }, new IPEndPoint(address, port));
-            Refresh();
-            await running;
-            Refresh();
-        }
-        catch (Exception ex) { Status.Text = $"無法執行：{ex.Message}"; }
+            if (source != "（內建範例）") return await DeviceProfile.LoadAsync(source, token);
+            using var stream = typeof(App).Assembly.GetManifestResourceStream("DefaultDevice.json")!;
+            using var reader = new StreamReader(stream);
+            var json = await reader.ReadToEndAsync(token);
+            token.ThrowIfCancellationRequested();
+            return DeviceProfile.Parse(json);
+        }, BindAddress.Text, Port.Text);
+        Refresh();
+        await running;
+        Refresh();
     }
     private async void Stop_Click(object sender, RoutedEventArgs e)
     {
@@ -105,6 +91,7 @@ public partial class MainWindow : Window
         e.Cancel = true;
         if (closing) return;
         closing = true;
+        Refresh();
         await session.DisposeAsync();
         timer.Stop(); allowClose = true; Close();
     }
