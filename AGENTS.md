@@ -31,6 +31,19 @@ GitHub 上的強制執行需啟用 `main` ruleset／branch protection：要求 P
 - 開發／測試工具另行記錄其用途與授權，不因單純執行工具就認定它被散布進 EXE；若僅供開發的非寬鬆工具確有需要，也先提出例外，不自行加入。
 - 目前只確認政策，未完成整包相依／runtime 授權審查，不宣稱既有發布成品已符合全部義務。
 
+## 安全開發流程
+
+- 安全檢查是每次開發／發布流程的一部分：SAST、直接與遞移相依漏洞、固定 runtime pack、機密外洩保護及協定邊界測試。發布流程須等待同一 tag 的 security workflow 通過。
+- 新增／升級相依時同時審查漏洞與授權；NuGet PackageReference 為零不表示 runtime／原生元件沒有漏洞。工具／測試相依也需盤點。
+- CodeQL 僅作 GitHub CI 分析服務，不散布進產品；使用需符合 GitHub CodeQL 條款與公開儲存庫／方案資格，不將其標示為 MIT 套件。若儲存庫改為私有，先確認服務授權。
+- 不為了 CI 通過而停用檢查、降低門檻、忽略 feed 錯誤或任意豁免 CVE。NuGet High／Critical、CodeQL security-severity >=7 或 error 阻擋；PyPI 無統一嚴重度，所有有效 advisory 阻擋。
+- 誤報／風險例外需提出版本、advisory、影響評估、理由、負責人與期限，確認後才設計最小例外；目前無自動豁免機制。既有問題也需處理，不把它們全部放進忽略清單。
+- 修改 BER、JSON、GETBULK、socket 或取消／清理時，執行相應惡意輸入、界線與恢復測試。不得只靠 SAST 取代實際行為驗證。
+- 不提交或輸出 token、密碼、實際敏感 community；樣本 public 不代表可把使用者環境設定寫入日誌。
+- Actions 使用最小權限、正常 pull_request 事件及停用 checkout 憑證持留；禁止用 pull_request_target 執行 PR 程式。此規則不禁止只讀 event metadata 的既有 main-source-policy。
+- 必要安全工作流程不可因路徑過濾或 continue-on-error 靜默跳過。套件／feed／權限錯誤記為掃描未完成，不記為安全通過。
+- GitHub Secret scanning、Push protection、Dependabot alerts 與 required checks 需儲存庫設定；workflow 檔案存在不代表平台設定已啟用，見 SECURITY.md。
+
 ## 現有建置與驗證
 
 使用 .NET 10 SDK，在儲存庫根目錄執行：
