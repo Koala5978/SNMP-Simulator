@@ -4,7 +4,7 @@
 
 ## 文件與目前狀態
 
-此實作分支包含 v0.1.0 候選程式、範例與測試，尚未正式發布。核心與本機 UDP 可在 Linux 測試，WPF 發行物只在 Windows 執行。Windows 實機及完整相依授權驗收仍待完成。
+v0.1.0 已發布；本分支正在準備 v0.1.1 修補版，尚未建立 v0.1.1 Release。核心與本機 UDP 可在 Linux 測試，WPF 發行物只在 Windows 執行。本版 CI、Windows 人工及最終授權結果分別記錄，不沿用舊版通過結果。
 
 - [需求規格（已確認）](docs/requirements.md)
 - [架構設計與架構圖（已確認）](docs/architecture.md)
@@ -15,7 +15,9 @@
 
 - [v0.1.1 修補版 Spec（設計基準）](docs/releases/v0.1.1-spec.md)
 - [v0.1.1 增量架構與流程圖（已確認）](docs/releases/v0.1.1-architecture.md)
-- [v0.1.1 開發與驗收任務（已確認）](docs/releases/v0.1.1-task.md)
+- [v0.1.1 開發與驗收任務](docs/releases/v0.1.1-task.md)
+- [v0.1.1 候選驗證紀錄](docs/releases/v0.1.1-verification.md)
+- [v0.1.1 Windows 補驗清單](docs/releases/v0.1.1-acceptance.md)
 - [v0.2.0 候選事項與後續方向（未開始）](docs/roadmap.md)
 
 ## 授權

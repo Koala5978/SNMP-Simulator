@@ -1,7 +1,7 @@
 name: Security checks
 on:
   push:
-    branches: [main, develop, 'chore/security-*']
+    branches: [main, develop, 'chore/security-*', 'fix/**']
   pull_request:
     branches: [main, develop]
   schedule:

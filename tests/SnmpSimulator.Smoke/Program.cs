@@ -4,6 +4,26 @@ using System.Net.Sockets;
 using System.Text;
 using SnmpSimulator.Core;
 
+if (args.Length == 3 && args[0] == "--verify-app")
+{
+    var actual = System.Reflection.AssemblyName.GetAssemblyName(args[1]).Version!;
+    var expected = typeof(SessionRegression).Assembly.GetName().Version!;
+    if (actual != expected) throw new Exception($"App assembly version {actual} differs from build version {expected}");
+    var title = SnmpSimulator.App.SessionStatusText.WindowTitle(actual);
+    if (OperatingSystem.IsWindows())
+    {
+        var file = System.Diagnostics.FileVersionInfo.GetVersionInfo(args[2]);
+        if (file.FileVersion != expected.ToString()) throw new Exception($"EXE file version mismatch: {file.FileVersion}");
+        Console.WriteLine($"PASS: App assembly {actual}, EXE file {file.FileVersion}, UI title {title}");
+    }
+    else
+    {
+        Console.WriteLine($"PASS: App assembly {actual}, UI title projection {title}");
+        Console.WriteLine("NOT RUN: Windows native EXE file-version check requires Windows (enforced by Windows CI).");
+    }
+    return;
+}
+
 var path = args.Length > 0 ? args[0] : "samples/device.json";
 var profile = DeviceProfile.Load(path);
 var agent = new SnmpAgent(profile);
@@ -164,6 +184,7 @@ for (var i = 0; i < 1000; i++)
     _ = agent.Respond(garbage);
 }
 Check(true, "1000 malformed packet samples cannot crash decoder");
+await SessionRegression.RunAsync(profile, Check);
 Console.WriteLine($"Completed {checks} checks.");
 
 sealed class ManualTime : TimeProvider
