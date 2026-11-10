@@ -131,6 +131,7 @@ GitHub Actions 執行 Windows 建置／測試、CodeQL C# SAST、相依漏洞及
 | [v0.1.1 驗證紀錄](docs/releases/v0.1.1-verification.md) | 自動檢查、使用者驗收與待核實證據 |
 | [v0.1.1 人工驗收](docs/releases/v0.1.1-acceptance.md) | 使用者已回報本輪項目測試通過，詳情依紀錄 |
 | [後續規劃](docs/roadmap.md) | v0.2.0 候選事項，尚未實作 |
+| [v0.2.0 Spec](docs/releases/v0.2.0-spec.md) | 已確認的 About／短 commit 需求，其餘功能規劃中，尚未實作 |
 | [v0.1.0 需求](docs/requirements.md)／[架構](docs/architecture.md)／[驗證](docs/verification.md) | 初始版本歷史基準 |
 | [AGENTS.md](AGENTS.md) | AI 協作、分支、授權與安全開發規則 |
 
