@@ -50,7 +50,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Release source must already be merged into main.' }
           gh release view $env:RELEASE_TAG --repo $env:GH_REPO
           if ($LASTEXITCODE -ne 0) { throw 'Create the GitHub Release first.' }
-      - uses: actions/setup-dotnet@v5
+      - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: '10.0.x'
       - uses: actions/setup-python@v6
