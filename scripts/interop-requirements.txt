@@ -1,2 +1,2 @@
-pysnmp==7.1.22
+pysnmp==7.1.31
 pyasn1==0.6.5
