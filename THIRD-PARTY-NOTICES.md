@@ -1,4 +1,4 @@
-# Third-party notices — v0.1.0 candidate
+# Third-party notices
 
 Project code is MIT (see LICENSE). Third-party components retain their own licenses.
 

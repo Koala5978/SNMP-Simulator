@@ -14,7 +14,15 @@ concurrency:
   group: release-assets-${{ github.event.release.tag_name || inputs.tag }}
   cancel-in-progress: false
 jobs:
+  security:
+    uses: ./.github/workflows/security.yml
+    with:
+      source_ref: ${{ github.event.release.tag_name || inputs.tag }}
+    permissions:
+      contents: read
+      security-events: write
   release-assets:
+    needs: security
     runs-on: windows-2022
     timeout-minutes: 25
     permissions:
@@ -64,6 +72,8 @@ jobs:
         shell: pwsh
         run: |
           dotnet publish src/SnmpSimulator.App -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o artifacts/package
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          dotnet run -c Release --project tests/SnmpSimulator.Smoke -- --verify-app src/SnmpSimulator.App/bin/Release/net10.0-windows/win-x64/snmp-simulator.dll artifacts/package/snmp-simulator.exe
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           Copy-Item LICENSE,THIRD-PARTY-NOTICES.md artifacts/package
           Copy-Item licenses artifacts/package -Recurse

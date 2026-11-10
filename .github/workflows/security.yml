@@ -1,0 +1,98 @@
+name: Security checks
+on:
+  push:
+    branches: [main, develop, 'chore/security-*', 'fix/**']
+  pull_request:
+    branches: [main, develop]
+  schedule:
+    - cron: '23 2 * * 1'
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      source_ref:
+        type: string
+        required: false
+permissions:
+  contents: read
+jobs:
+  sast:
+    name: CSharp SAST
+    runs-on: windows-2022
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.source_ref || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '10.0.x'
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - uses: github/codeql-action/init@v4
+        with:
+          languages: csharp
+          build-mode: manual
+          queries: security-extended
+      - name: Build actual Windows application and test code
+        shell: pwsh
+        run: |
+          dotnet build src/SnmpSimulator.App -c Release
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          dotnet build tests/SnmpSimulator.Smoke -c Release
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - uses: github/codeql-action/analyze@v4
+        with:
+          output: artifacts/security/codeql
+          category: csharp-security
+      - name: Block high/critical security findings
+        run: python scripts/security_scan.py sarif
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: security-sast-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/security/codeql/
+          if-no-files-found: warn
+  dependencies:
+    name: Dependency audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.source_ref || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '10.0.x'
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Test report gates
+        run: python -m unittest discover -s tests/security -v
+      - name: Audit dependencies including runtime packs
+        run: python scripts/security_scan.py sca
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: security-dependencies-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/security/sca/
+          if-no-files-found: warn
+  protocol:
+    name: Protocol boundary tests
+    runs-on: windows-2022
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.source_ref || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '10.0.x'
+      - name: Test malformed input, bounds, cancellation and UDP recovery
+        run: dotnet run -c Release --project tests/SnmpSimulator.Smoke -- samples/device.json
