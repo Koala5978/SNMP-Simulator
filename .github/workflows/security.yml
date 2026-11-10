@@ -51,7 +51,7 @@ jobs:
           category: csharp-security
       - name: Block high/critical security findings
         run: python scripts/security_scan.py sarif
-      - uses: actions/upload-artifact@v6
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: security-sast-${{ github.run_id }}-${{ github.run_attempt }}
@@ -76,7 +76,7 @@ jobs:
         run: python -m unittest discover -s tests/security -v
       - name: Audit dependencies including runtime packs
         run: python scripts/security_scan.py sca
-      - uses: actions/upload-artifact@v6
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: security-dependencies-${{ github.run_id }}-${{ github.run_attempt }}
