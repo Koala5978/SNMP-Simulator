@@ -44,7 +44,7 @@ jobs:
           $hash = Get-FileHash artifacts/windows/snmp-simulator.exe -Algorithm SHA256
           "$($hash.Hash)  snmp-simulator.exe" | Set-Content artifacts/windows/SHA256SUMS.txt
           git rev-parse HEAD | Set-Content artifacts/windows/SOURCE_COMMIT.txt
-      - uses: actions/upload-artifact@v6
+      - uses: actions/upload-artifact@v7
         with:
           name: snmp-simulator-win-x64-${{ github.sha }}
           path: artifacts/windows/
